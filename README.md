@@ -18,8 +18,8 @@ Main libraries and dependencies:
 1. `Shapely`: python package for set-theoretic analysis and manipulation of planar features, beneficial for spatial data analysis
 1. `Albumentation`: python package for image augmentations
 ### Run The Program
-1. To run the program, simply by re-running the available notebook: `Training - Effnet + Resnet.ipynb`
-1. If you want to add any available auxiliaries/predictors from ForestNet dataset, you can modify the backbone model where the code implementation can be found under `model` folder (will update the examples soon)
+1. To run the program, simply by re-running the available notebook: `Training - Effnet + Resnet.ipynb` and `Training - UNet.ipynb`
+1. If you want to add any available auxiliaries/predictors from ForestNet dataset, you can modify the backbone model where the code implementation can be found under `model` folder (will update the other examples, especially with four auxiliaries/predictors, soon)
 
 ## How to Cite
 ### Bibtex

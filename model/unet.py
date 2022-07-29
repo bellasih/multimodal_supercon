@@ -28,18 +28,17 @@ def get_train_weights_binary(train_dataset):
 class DoubleConv(nn.Module):
     def __init__(self, in_channels, out_channels, mid_channels=None):
         super().__init__()
-        if not mid_channels:
-            mid_channels = out_channels
-            self.double_conv = nn.Sequential(
-                nn.Conv2d(in_channels, mid_channels, kernel_size=3, padding=1),
-                nn.BatchNorm2d(mid_channels),
-                nn.ReLU(inplace=True),
-                nn.Dropout(p=0.1),
-                nn.Conv2d(mid_channels, out_channels, kernel_size=3, padding=1),
-                nn.BatchNorm2d(out_channels),
-                nn.ReLU(inplace=True),
-                nn.Dropout(p=0.1)
-            )
+        mid_channels = out_channels
+        self.double_conv = nn.Sequential(
+            nn.Conv2d(in_channels, mid_channels, kernel_size=3, padding=1),
+            nn.BatchNorm2d(mid_channels),
+            nn.ReLU(inplace=True),
+            nn.Dropout(p=0.1),
+            nn.Conv2d(mid_channels, out_channels, kernel_size=3, padding=1),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True),
+            nn.Dropout(p=0.1)
+        )
 
     def forward(self, x):
         return self.double_conv(x)
@@ -84,11 +83,12 @@ class OutConv(nn.Module):
         return self.conv(x)
 
 class UNet(nn.Module):
-    def __init__(self, n_channels, n_classes, bilinear=True):
+    def __init__(self, n_channels, n_classes, stage, bilinear=True):
         super(UNet, self).__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes
         self.bilinear = bilinear
+        self.stage = stage
 
         self.inc = DoubleConv(n_channels, 8)
         self.down1 = Down(8, 16)
@@ -106,8 +106,16 @@ class UNet(nn.Module):
         self.lin1 = nn.Linear(6400, 512)
         self.lin2 = nn.Linear(512, 256)
         self.lin3 = nn.Linear(256, 4)
+        
+        # slope
+        self.flatten = nn.Flatten()
+        self.linear1 = nn.Linear(160*160, 512)
+        self.linear2 = nn.Linear(512, 256)
+        self.batch1d = nn.BatchNorm1d(512)
+        self.batch1d_n = nn.BatchNorm1d(160*160)
+        self.dropout = nn.Dropout(0.5)
 
-    def forward(self, x):
+    def forward(self, x, s=None):
         x1 = self.inc(x)
         x2 = self.down1(x1)
         x3 = self.down2(x2)
@@ -122,5 +130,19 @@ class UNet(nn.Module):
         pred = self.flatten(x5)
         pred = F.relu(self.lin1(pred))
         pred = F.relu(self.lin2(pred))
-        pred = self.lin3(pred)
-        return logits, pred
+
+        if s != None:
+            s = self.flatten(s)
+            s = self.batch1d_n(s)
+            s = self.dropout(s)
+            s = self.batch1d(F.relu(self.linear1(s)))
+            s = F.relu(self.linear2(s))
+            
+            pred = torch.concat((pred,s),1)
+            pred = self.lin3(self.dropout(self.linear2(pred)))
+        
+        if self.stage == "classification":
+            return logits, pred
+        
+        if self.stage == "projection":
+            return pred
